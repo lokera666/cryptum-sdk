@@ -11,8 +11,11 @@
 - RIPPLE (mainnet, testnet)
 - POLYGON (mainnet, testnet)
 - AVAXCCHAIN (mainnet, fuji)
+- CHILIZ (mainnet, testnet)
 - SOLANA (mainnet, devnet)
 - HATHOR (mainnet, testnet)
+- STRATUS (mainnet, testnet)
+- BESU (mainnet, testnet)
 
 ## Ethereum-based blockchains (EVMs)
 
@@ -21,3 +24,6 @@
 - POLYGON
 - BSC
 - AVAXCCHAIN
+- CHILIZ
+- STRATUS
+- BESU

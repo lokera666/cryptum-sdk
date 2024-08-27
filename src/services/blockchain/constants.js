@@ -13,9 +13,13 @@ const Protocol = {
   HATHOR: 'HATHOR',
   CARDANO: 'CARDANO',
   AVAXCCHAIN: 'AVAXCCHAIN',
+  CHILIZ: 'CHILIZ',
   POLYGON: 'POLYGON',
-  SOLANA:'SOLANA',
+  SOLANA: 'SOLANA',
+  STRATUS: 'STRATUS',
+  BESU: 'BESU',
 }
+
 module.exports.Protocol = Protocol
 
 module.exports.CELO_CONTRACT_ADDRESS = {
@@ -65,12 +69,62 @@ module.exports.AVAXCCHAIN_COMMON_CHAIN = {
   },
 }
 
+module.exports.CHLIZ_COMMON_CHAIN = {
+  testnet: {
+    base: 'rinkeby',
+    chain: {
+      chainId: 88882,
+      networkId: 88882,
+    },
+  },
+  mainnet: {
+    base: 'mainnet',
+    chain: {
+      chainId: 88888,
+      networkId: 88888,
+    },
+  },
+}
+
+module.exports.STRATUS_COMMON_CHAIN = {
+  testnet: {
+    base: 'goerli',
+    chain: {
+      chainId: 2008,
+      networkId: 2008,
+    },
+  },
+  mainnet: {
+    base: 'mainnet',
+    chain: {
+      chainId: 2008,
+      networkId: 2008,
+    },
+  },
+}
+module.exports.BESU_COMMON_CHAIN = {
+  testnet: {
+    base: 'goerli',
+    chain: {
+      chainId: 1337,
+      networkId: 1337,
+    },
+  },
+  mainnet: {
+    base: 'mainnet',
+    chain: {
+      chainId: 1337,
+      networkId: 1337,
+    },
+  },
+}
+
 module.exports.POLYGON_COMMON_CHAIN = {
   testnet: {
     base: 'rinkeby',
     chain: {
-      chainId: 80001,
-      networkId: 80001,
+      chainId: 80002,
+      networkId: 80002,
     },
   },
   mainnet: {

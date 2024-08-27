@@ -1,18 +1,20 @@
 module.exports.getTransactionControllerInstance = (config) => new Controller(config)
+const BigNumber = require('bignumber.js')
 const { handleRequestError, getApiMethod, mountHeaders, makeRequest } = require('../../../services')
 const requests = require('./requests.json')
 const Interface = require('./interface')
-const { Protocol, CUSD_CONTRACT_ADDRESS, CEUR_CONTRACT_ADDRESS } = require('../../../services/blockchain/constants')
-const { getTokenAddress, toWei, toHTRUnit } = require('../../../services/blockchain/utils')
+const { Protocol } = require('../../../services/blockchain/constants')
+const { toHTRUnit } = require('../../../services/blockchain/utils')
 const { FeeResponse, TransactionResponse, SignedTransaction, UTXO, TransactionType, Input } = require('../entity')
-const { buildStellarTransferTransaction, buildStellarTrustlineTransaction } = require('../../../services/blockchain/stellar')
-const { buildRippleTransferTransaction, buildRippleTrustlineTransaction } = require('../../../services/blockchain/ripple')
 const {
-  buildAvaxCChainTransferTransaction,
-  buildBscTransferTransaction,
-  buildPolygonTransferTransaction,
-  buildEthereumTransferTransaction,
-} = require('../../../services/blockchain/ethereum')
+  buildStellarTransferTransaction,
+  buildStellarTrustlineTransaction,
+} = require('../../../services/blockchain/stellar')
+const {
+  buildRippleTransferTransaction,
+  buildRippleTrustlineTransaction,
+} = require('../../../services/blockchain/ripple')
+
 const {
   buildSolanaTransferTransaction,
   deploySolanaToken,
@@ -31,7 +33,6 @@ const {
 const { buildBitcoinTransferTransaction } = require('../../../services/blockchain/bitcoin')
 const { getWalletControllerInstance } = require('../../wallet/controller')
 const { GenericException, HathorException } = require('../../../errors')
-const { buildCeloTransferTransaction } = require('../../../services/blockchain/celo')
 const {
   validateCeloTransferTransactionParams,
   validateBitcoinTransferTransactionParams,
@@ -44,12 +45,11 @@ const {
   validateHathorTokenTransactionFromUTXO,
   validateHathorTokenTransactionFromWallet,
   validateHathorTransferTransactionFromWallet,
-  validateHathorTransferTransactionFromUTXO
+  validateHathorTransferTransactionFromUTXO,
 } = require('../../../services/validations')
 const { buildHathorTransferTransaction, buildHathorTokenTransaction } = require('../../../services/blockchain/hathor')
 const { buildOperation, buildOperationFromInputs } = require('../../../services/blockchain/cardano')
 const CardanoWasm = require('@emurgo/cardano-serialization-lib-nodejs')
-const { TRANSFER_METHOD_ABI, TRANSFER_COMMENT_METHOD_ABI } = require('../../../services/blockchain/contract/abis')
 const { isTestnet } = require('../../../services/utils')
 const { getTokenControllerInstance } = require('../../token/controller')
 const {
@@ -58,7 +58,7 @@ const {
   validateSolanaTransferTransaction,
   validateSolanaDeployTransaction,
   validateSolanaDeployNFT,
-  validateSolanaCustomProgramInput
+  validateSolanaCustomProgramInput,
 } = require('../../../services/validations/solana')
 
 class Controller extends Interface {
@@ -72,7 +72,12 @@ class Controller extends Interface {
     try {
       validateSignedTransaction(transaction)
       const { protocol, signedTx, type } = transaction
-      const response = await makeRequest({ method: 'post', url: `/tx?protocol=${protocol}`, body: { signedTx, type }, config: this.config })
+      const response = await makeRequest({
+        method: 'post',
+        url: `/tx?protocol=${protocol}`,
+        body: { signedTx, type },
+        config: this.config,
+      })
       return new TransactionResponse(response)
     } catch (error) {
       handleRequestError(error)
@@ -110,7 +115,7 @@ class Controller extends Interface {
     feeCurrency = null,
     tokenType = null,
     numInputs = null,
-    numOutputs = null
+    numOutputs = null,
   }) {
     try {
       const data = {}
@@ -128,7 +133,12 @@ class Controller extends Interface {
       if (tokenType) data.tokenType = tokenType
       if (numInputs) data.numInputs = numInputs
       if (numOutputs) data.numOutputs = numOutputs
-      const response = await makeRequest({ method: 'post', url: `/fee?protocol=${protocol}`, body: data, config: this.config })
+      const response = await makeRequest({
+        method: 'post',
+        url: `/fee?protocol=${protocol}`,
+        body: data,
+        config: this.config,
+      })
       return new FeeResponse(response)
     } catch (error) {
       handleRequestError(error)
@@ -167,16 +177,7 @@ class Controller extends Interface {
    */
   async getTransactionByHash({ hash, protocol }) {
     try {
-      const apiRequest = getApiMethod({
-        requests,
-        key: 'getTransactionByHash',
-        config: this.config,
-      })
-      const headers = mountHeaders(this.config.apiKey)
-      const response = await apiRequest(`${requests.getTransactionByHash.url}/${hash}?protocol=${protocol}`, {
-        headers,
-      })
-      return response.data
+      return await makeRequest({ method: 'get', url: `/tx/${hash}?protocol=${protocol}`, config: this.config })
     } catch (error) {
       handleRequestError(error)
     }
@@ -190,22 +191,30 @@ class Controller extends Interface {
    */
   async getTransactionReceiptByHash({ hash, protocol }) {
     try {
-      return await makeRequest({ method: 'get', url: `/transaction/${hash}/receipt?protocol=${protocol}`, config: this.config })
+      return await makeRequest({
+        method: 'get',
+        url: `/transaction/${hash}/receipt?protocol=${protocol}`,
+        config: this.config,
+      })
     } catch (error) {
       handleRequestError(error)
     }
   }
   /**
- * Get proxy address by hash (tx id)
- *
- * @param {object} input
- * @param {string} input.hash transaction hash
- * @param {Protocol} input.protocol blockchain protocol
- * @returns {Promise<{ address:string }>}
- */
+   * Get proxy address by hash (tx id)
+   *
+   * @param {object} input
+   * @param {string} input.hash transaction hash
+   * @param {Protocol} input.protocol blockchain protocol
+   * @returns {Promise<{ address:string }>}
+   */
   async getProxyAddressByHash({ hash, protocol }) {
     try {
-      return await makeRequest({ method: 'get', url: `/transaction/${hash}/proxy?protocol=${protocol}`, config: this.config })
+      return await makeRequest({
+        method: 'get',
+        url: `/transaction/${hash}/proxy?protocol=${protocol}`,
+        config: this.config,
+      })
     } catch (error) {
       handleRequestError(error)
     }
@@ -377,67 +386,18 @@ class Controller extends Interface {
    */
   async createCeloTransferTransaction(input) {
     validateCeloTransferTransactionParams(input)
-    let { wallet, tokenSymbol, amount, destination, memo, fee, contractAddress, feeCurrency } = input
-    const testnet = isTestnet(this.config.environment)
-    const protocol = Protocol.CELO
-    let type, method, params, value, contractAbi, decimals = 18
-    if (tokenSymbol !== 'CELO') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: contractAddress, protocol }))
-    }
-    const amountWei = toWei(amount, decimals).toString()
-    if (tokenSymbol === 'CELO') {
-      type = memo ? TransactionType.CALL_CONTRACT_METHOD : TransactionType.TRANSFER
-      method = memo ? 'transferWithComment' : null
-      params = memo ? [destination, amountWei, memo] : null
-      value = memo ? null : amount
-      contractAddress = memo ? getTokenAddress(Protocol.CELO, tokenSymbol, testnet) : null
-      contractAbi = memo ? TRANSFER_COMMENT_METHOD_ABI : null
-    } else {
-      type = TransactionType.CALL_CONTRACT_METHOD
-      method = memo ? 'transferWithComment' : 'transfer'
-      params = memo ? [destination, amountWei, memo] : [destination, amountWei]
-      contractAbi = memo ? TRANSFER_COMMENT_METHOD_ABI : TRANSFER_METHOD_ABI
-
-      if (['cUSD', 'cEUR'].includes(tokenSymbol)) {
-        contractAddress = getTokenAddress(Protocol.CELO, tokenSymbol, testnet)
-      }
-    }
-    if (feeCurrency) {
-      const network = testnet ? 'testnet' : 'mainnet'
-      feeCurrency =
-        feeCurrency === 'cUSD'
-          ? CUSD_CONTRACT_ADDRESS[network]
-          : feeCurrency === 'cEUR'
-            ? CEUR_CONTRACT_ADDRESS[network]
-            : feeCurrency
-    }
-    const { info, networkFee } = await this._getFeeInfo({
-      wallet,
-      type,
-      destination,
-      amount: value,
-      contractAddress,
-      contractAbi,
-      method,
-      params,
-      fee,
-      feeCurrency,
-      protocol,
-    })
-    const signedTx = await buildCeloTransferTransaction({
-      fromPrivateKey: wallet.privateKey,
-      tokenSymbol,
+    const { amount, contractAddress, destination, fee, feeCurrency, memo, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
       amount,
+      protocol: 'CELO',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
       destination,
+      fee,
       memo,
-      fee: networkFee,
-      nonce: info.nonce,
-      testnet,
-      contractAddress,
       feeCurrency,
-      decimals
     })
-    return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
   }
   /**
    * Create ethereum transfer transaction
@@ -447,36 +407,35 @@ class Controller extends Interface {
    */
   async createEthereumTransferTransaction(input) {
     validateEthereumTransferTransactionParams(input)
-    const { wallet, tokenSymbol, amount, destination, fee, contractAddress } = input
-    const protocol = Protocol.ETHEREUM
-    let decimals
-    if (tokenSymbol !== 'ETH') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: contractAddress, protocol }))
-    }
-    const { info, networkFee } = await this._getFeeInfo({
-      wallet,
-      type: tokenSymbol === 'ETH' ? TransactionType.TRANSFER : TransactionType.CALL_CONTRACT_METHOD,
-      destination,
-      amount: tokenSymbol === 'ETH' ? amount : null,
-      contractAddress,
-      contractAbi: tokenSymbol === 'ETH' ? null : TRANSFER_METHOD_ABI,
-      method: tokenSymbol === 'ETH' ? null : 'transfer',
-      params: tokenSymbol === 'ETH' ? null : [destination, toWei(amount, decimals).toString()],
-      fee,
-      protocol,
-    })
-    const signedTx = await buildEthereumTransferTransaction({
-      fromPrivateKey: wallet.privateKey,
-      tokenSymbol,
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
       amount,
+      protocol: 'ETHEREUM',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
       destination,
-      fee: networkFee,
-      nonce: info.nonce,
-      testnet: isTestnet(this.config.environment),
-      contractAddress,
-      decimals
+      fee,
     })
-    return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
+  }
+  /**
+   * Create stratus transfer transaction
+   *
+   * @param {EthereumTransferTransactionInput} input
+   * @returns {Promise<SignedTransaction>} signed transaction data
+   */
+  async createStratusTransferTransaction(input) {
+    validateEthereumTransferTransactionParams(input)
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
+      amount,
+      protocol: 'STRATUS',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
+      destination,
+      fee,
+    })
   }
   /**
    * Create bsc transfer transaction
@@ -486,36 +445,16 @@ class Controller extends Interface {
    */
   async createBscTransferTransaction(input) {
     validateEthereumTransferTransactionParams(input)
-    const { wallet, tokenSymbol, amount, destination, fee, contractAddress } = input
-    const protocol = Protocol.BSC
-    let decimals
-    if (tokenSymbol !== 'BNB') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: contractAddress, protocol }))
-    }
-    const { info, networkFee } = await this._getFeeInfo({
-      wallet,
-      type: tokenSymbol === 'BNB' ? TransactionType.TRANSFER : TransactionType.CALL_CONTRACT_METHOD,
-      destination,
-      amount: tokenSymbol === 'BNB' ? amount : null,
-      contractAddress,
-      contractAbi: tokenSymbol === 'BNB' ? null : TRANSFER_METHOD_ABI,
-      method: tokenSymbol === 'BNB' ? null : 'transfer',
-      params: tokenSymbol === 'BNB' ? null : [destination, toWei(amount, decimals).toString()],
-      fee,
-      protocol,
-    })
-    const signedTx = await buildBscTransferTransaction({
-      fromPrivateKey: wallet.privateKey,
-      tokenSymbol,
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
       amount,
+      protocol: 'BSC',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
       destination,
-      fee: networkFee,
-      nonce: info.nonce,
-      testnet: isTestnet(this.config.environment),
-      contractAddress,
-      decimals
+      fee,
     })
-    return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
   }
   /**
    * Create polygon transfer transaction
@@ -525,75 +464,55 @@ class Controller extends Interface {
    */
   async createPolygonTransferTransaction(input) {
     validateEthereumTransferTransactionParams(input)
-    const { wallet, tokenSymbol, amount, destination, fee, contractAddress } = input
-    const protocol = Protocol.POLYGON
-    let decimals
-    if (tokenSymbol !== 'MATIC') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: contractAddress, protocol }))
-    }
-    const { info, networkFee } = await this._getFeeInfo({
-      wallet,
-      type: tokenSymbol === 'MATIC' ? TransactionType.TRANSFER : TransactionType.CALL_CONTRACT_METHOD,
-      destination,
-      amount: tokenSymbol === 'MATIC' ? amount : null,
-      contractAddress,
-      contractAbi: tokenSymbol === 'MATIC' ? null : TRANSFER_METHOD_ABI,
-      method: tokenSymbol === 'MATIC' ? null : 'transfer',
-      params: tokenSymbol === 'MATIC' ? null : [destination, toWei(amount, decimals).toString()],
-      fee,
-      protocol,
-    })
-    const signedTx = await buildPolygonTransferTransaction({
-      fromPrivateKey: wallet.privateKey,
-      tokenSymbol,
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
       amount,
+      protocol: 'POLYGON',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
       destination,
-      fee: networkFee,
-      nonce: info.nonce,
-      testnet: isTestnet(this.config.environment),
-      contractAddress,
-      decimals
+      fee,
     })
-    return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
   }
   /**
-  * Create avalanche transfer transaction
-  *
-  * @param {EthereumTransferTransactionInput} input
-  * @returns {Promise<SignedTransaction>} signed transaction data
-  */
+   * Create avalanche transfer transaction
+   *
+   * @param {EthereumTransferTransactionInput} input
+   * @returns {Promise<SignedTransaction>} signed transaction data
+   */
   async createAvaxCChainTransferTransaction(input) {
     validateEthereumTransferTransactionParams(input)
-    const { wallet, tokenSymbol, amount, destination, fee, contractAddress } = input
-    const protocol = Protocol.AVAXCCHAIN
-    let decimals
-    if (tokenSymbol !== 'AVAX') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: contractAddress, protocol }))
-    }
-    const { info, networkFee } = await this._getFeeInfo({
-      wallet,
-      type: tokenSymbol === 'AVAX' ? TransactionType.TRANSFER : TransactionType.CALL_CONTRACT_METHOD,
-      destination,
-      amount: tokenSymbol === 'AVAX' ? amount : null,
-      contractAddress,
-      contractAbi: tokenSymbol === 'AVAX' ? null : TRANSFER_METHOD_ABI,
-      method: tokenSymbol === 'AVAX' ? null : 'transfer',
-      params: tokenSymbol === 'AVAX' ? null : [destination, toWei(amount, decimals).toString()],
-      fee,
-      protocol,
-    })
-    const signedTx = await buildAvaxCChainTransferTransaction({
-      fromPrivateKey: wallet.privateKey,
-      tokenSymbol,
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
       amount,
+      protocol: 'AVAXCCHAIN',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
       destination,
-      fee: networkFee,
-      nonce: info.nonce,
-      testnet: isTestnet(this.config.environment),
-      contractAddress,
-      decimals
+      fee,
     })
-    return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
+  }
+
+  /**
+   * Create chiliz transfer transaction
+   *
+   * @param {EthereumTransferTransactionInput} input
+   * @returns {Promise<SignedTransaction>} signed transaction data
+   */
+  async createChilizTransferTransaction(input) {
+    validateEthereumTransferTransactionParams(input)
+    const { amount, contractAddress, destination, fee, tokenSymbol, wallet } = input
+    const tc = getTokenControllerInstance(this.config)
+    return await tc.transfer({
+      amount,
+      protocol: 'CHILIZ',
+      token: contractAddress ? contractAddress : tokenSymbol,
+      wallet,
+      destination,
+      fee,
+    })
   }
   /**
    * Create bitcoin transfer transaction
@@ -603,7 +522,7 @@ class Controller extends Interface {
    */
   async createBitcoinTransferTransaction(input) {
     validateBitcoinTransferTransactionParams(input)
-    let { wallet, inputs, outputs, fee } = input
+    let { wallet, inputs, outputs, fee, data } = input
     const protocol = Protocol.BITCOIN
     if (wallet) {
       const utxos = await this.getUTXOs({ address: wallet.address, protocol })
@@ -628,8 +547,9 @@ class Controller extends Interface {
       inputs,
       outputs,
       fee,
+      data,
       testnet: isTestnet(this.config.environment),
-      config: this.config
+      config: this.config,
     })
     return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
   }
@@ -773,11 +693,18 @@ class Controller extends Interface {
       changeAddress,
       nftData,
     } = input
-    let inputSum = 0
-    const amountHTRUnit = toHTRUnit(amount).toNumber()
     const protocol = Protocol.HATHOR
+    let inputSum = 0
+    let amountHTRUnit
+    if (nftData && type === TransactionType.HATHOR_TOKEN_CREATION) {
+      amountHTRUnit = Math.ceil(new BigNumber(amount).times(0.0001).plus(0.01).times(100).toNumber())
+    } else if (type === TransactionType.HATHOR_NFT_MINT || type === TransactionType.HATHOR_NFT_MELT) {
+      amountHTRUnit = Math.ceil(new BigNumber(amount).times(0.0001).times(100).toNumber())
+    } else {
+      amountHTRUnit = toHTRUnit(amount).toNumber()
+    }
     let utxos = await this.getUTXOs({ address: wallet.address, protocol })
-    if (type === TransactionType.HATHOR_TOKEN_MELT) {
+    if (type === TransactionType.HATHOR_TOKEN_MELT || type === TransactionType.HATHOR_NFT_MELT) {
       utxos = utxos.filter((utxo) => utxo.token === tokenUid)
     } else {
       utxos = utxos.filter((utxo) => utxo.token === '00' || utxo.token === tokenUid)
@@ -789,7 +716,7 @@ class Controller extends Interface {
     for (let i = 0; i < utxos.length; ++i) {
       const tx = await this.getTransactionByHash({ hash: utxos[i].txHash, protocol })
       const output = tx.tx.outputs[utxos[i].index]
-      if (type === TransactionType.HATHOR_TOKEN_MELT) {
+      if (type === TransactionType.HATHOR_TOKEN_MELT || type === TransactionType.HATHOR_NFT_MELT) {
         if (![0, 129].includes(output.token_data)) {
           if (inputSum < amountHTRUnit) {
             inputSum += output.value
@@ -1048,11 +975,17 @@ class Controller extends Interface {
     if (isNFT) {
       decimals = 0
     } else if (token !== 'SOL') {
-      ({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: token, protocol }))
+      ;({ decimals } = await getTokenControllerInstance(this.config).getInfo({ tokenAddress: token, protocol }))
     }
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const signedTx = await buildSolanaTransferTransaction({
-      from: wallet, to: destination, token, amount: Number(amount), latestBlock: blockhash, decimals, config: this.config
+      from: wallet,
+      to: destination,
+      token,
+      amount: Number(amount),
+      latestBlock: blockhash,
+      decimals,
+      config: this.config,
     })
     return new SignedTransaction({ signedTx, protocol, type: TransactionType.TRANSFER })
   }
@@ -1067,7 +1000,11 @@ class Controller extends Interface {
     const protocol = Protocol.SOLANA
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const signedTx = await buildSolanaTokenBurnTransaction({
-      from: wallet, token, amount: Number(amount), latestBlock: blockhash, config: this.config
+      from: wallet,
+      token,
+      amount: Number(amount),
+      latestBlock: blockhash,
+      config: this.config,
     })
     return new SignedTransaction({ signedTx, protocol, type: TransactionType.SOLANA_TOKEN_BURN })
   }
@@ -1082,14 +1019,19 @@ class Controller extends Interface {
     const protocol = Protocol.SOLANA
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const signedTx = await mintSolanaToken({
-      from: wallet, token, to: destination, amount, latestBlock: blockhash, config: this.config
+      from: wallet,
+      token,
+      to: destination,
+      amount,
+      latestBlock: blockhash,
+      config: this.config,
     })
     return new SignedTransaction({ signedTx, protocol, type: TransactionType.SOLANA_TOKEN_MINT })
   }
   /**
-     * Create Solana token deploy transaction
-     * @param {import('../entity').SolanaTokenDeployInput} input
-     */
+   * Create Solana token deploy transaction
+   * @param {import('../entity').SolanaTokenDeployInput} input
+   */
   async createSolanaTokenDeployTransaction(input) {
     validateSolanaDeployTransaction(input)
     const protocol = Protocol.SOLANA
@@ -1101,18 +1043,22 @@ class Controller extends Interface {
       symbol,
       decimals,
       amount,
-      config: this.config
+      config: this.config,
     })
     return {
       mint: response.mint,
       metadata: response.metadata,
-      transaction: new SignedTransaction({ signedTx: response.rawTransaction, protocol, type: TransactionType.SOLANA_TOKEN_CREATION })
+      transaction: new SignedTransaction({
+        signedTx: response.rawTransaction,
+        protocol,
+        type: TransactionType.SOLANA_TOKEN_CREATION,
+      }),
     }
   }
   /**
-     * Create Solana Collection
-     * @param {import('../entity').SolanaNFTCollectionInput} input
-     */
+   * Create Solana Collection
+   * @param {import('../entity').SolanaNFTCollectionInput} input
+   */
   async createSolanaCollectionTransaction(input) {
     validateSolanaCollectionInput(input)
     const { wallet, name, symbol, uri } = input
@@ -1120,17 +1066,26 @@ class Controller extends Interface {
     // const mintRent = (await this.getFee({ protocol, type: TransactionType.SOLANA_NFT_MINT })).mintRentExemption
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const response = await deploySolanaCollection({
-      name, symbol, uri, from: wallet, latestBlock: blockhash, config: this.config
+      name,
+      symbol,
+      uri,
+      from: wallet,
+      latestBlock: blockhash,
+      config: this.config,
     })
     return {
       collection: response.collection,
-      transaction: new SignedTransaction({ signedTx: response.rawTransaction, protocol, type: TransactionType.SOLANA_COLLECTION_MINT })
+      transaction: new SignedTransaction({
+        signedTx: response.rawTransaction,
+        protocol,
+        type: TransactionType.SOLANA_COLLECTION_MINT,
+      }),
     }
   }
   /**
-     * Create Solana NFT transaction
-     * @param {import('../entity').SolanaNFTTransactionInput} input
-     */
+   * Create Solana NFT transaction
+   * @param {import('../entity').SolanaNFTTransactionInput} input
+   */
   async createSolanaNFTTransaction(input) {
     validateSolanaNFTInput(input)
     const { wallet, maxSupply, uri, name, symbol, creators, royaltiesFee, collection } = input
@@ -1146,12 +1101,16 @@ class Controller extends Interface {
       royaltiesFee,
       collection,
       latestBlock: blockhash,
-      config: this.config
+      config: this.config,
     })
     return {
       mint: response.mint,
       metadata: response.metadata,
-      transaction: new SignedTransaction({ signedTx: response.rawTransaction, protocol, type: TransactionType.SOLANA_NFT_MINT })
+      transaction: new SignedTransaction({
+        signedTx: response.rawTransaction,
+        protocol,
+        type: TransactionType.SOLANA_NFT_MINT,
+      }),
     }
   }
   /**
@@ -1168,7 +1127,11 @@ class Controller extends Interface {
     const response = await mintEdition({ masterEdition, from: wallet, latestBlock: blockhash, config: this.config })
     return {
       mint: response.mint,
-      transaction: new SignedTransaction({ signedTx: response.rawTransaction, protocol, type: TransactionType.SOLANA_NFT_MINT })
+      transaction: new SignedTransaction({
+        signedTx: response.rawTransaction,
+        protocol,
+        type: TransactionType.SOLANA_NFT_MINT,
+      }),
     }
   }
   /**
@@ -1194,7 +1157,7 @@ class Controller extends Interface {
       royaltiesFee,
       collection,
       latestBlock: blockhash,
-      config: this.config
+      config: this.config,
     })
     return new SignedTransaction({ signedTx: response, protocol, type: TransactionType.SOLANA_UPDATE_METADATA })
   }
@@ -1224,7 +1187,11 @@ class Controller extends Interface {
     const protocol = Protocol.SOLANA
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const txHash = await updateAuctionAuthority({
-      from, auctionManager, auction, config: this.config, latestBlock: blockhash
+      from,
+      auctionManager,
+      auction,
+      config: this.config,
+      latestBlock: blockhash,
     })
     return new TransactionResponse({ hash: txHash })
   }
@@ -1239,7 +1206,11 @@ class Controller extends Interface {
     const protocol = Protocol.SOLANA
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const txHash = await updateVaultAuthority({
-      from, auctionManager, vault, config: this.config, latestBlock: blockhash
+      from,
+      auctionManager,
+      vault,
+      config: this.config,
+      latestBlock: blockhash,
     })
     return new TransactionResponse({ hash: txHash })
   }
@@ -1254,7 +1225,15 @@ class Controller extends Interface {
     const protocol = Protocol.SOLANA
     const { blockhash } = await this.getBlock({ block: 'latest', protocol })
     const txHash = await validateAuction({
-      config: this.config, from, vault, nft, store, metadata, tokenStore, tokenTracker, latestBlock: blockhash
+      config: this.config,
+      from,
+      vault,
+      nft,
+      store,
+      metadata,
+      tokenStore,
+      tokenTracker,
+      latestBlock: blockhash,
     })
     return new TransactionResponse({ hash: txHash })
   }

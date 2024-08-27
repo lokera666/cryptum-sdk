@@ -8,12 +8,14 @@ const wallets = {
   stellar: null,
   ripple: null,
   ethereum: null,
+  stratus: null,
   bsc: null,
   celo: null,
   bitcoin: null,
   hathor: null,
   cardano: null,
   avaxcchain: null,
+  chiliz: null,
   solana: null
 }
 exports.mnemonic = mnemonic
@@ -26,6 +28,10 @@ exports.getWallets = async () => {
   const controller = getWalletControllerInstance(exports.config)
   wallets.ethereum = await controller.generateWallet({
     protocol: Protocol.ETHEREUM,
+    mnemonic,
+  })
+  wallets.stratus = await controller.generateWallet({
+    protocol: Protocol.STRATUS,
     mnemonic,
   })
   wallets.bitcoin = await controller.generateWallet({
@@ -58,6 +64,10 @@ exports.getWallets = async () => {
   })
   wallets.avaxcchain = await controller.generateWallet({
     protocol: Protocol.AVAXCCHAIN,
+    mnemonic,
+  })
+  wallets.chiliz = await controller.generateWallet({
+    protocol: Protocol.CHILIZ,
     mnemonic,
   })
   wallets.solana = await controller.generateWallet({

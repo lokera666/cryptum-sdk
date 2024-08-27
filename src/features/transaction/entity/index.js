@@ -4,6 +4,13 @@
  */
  const TransactionType = {
   TRANSFER: 'TRANSFER',
+  MINT: 'MINT',
+  BURN: 'BURN',
+  NFT_TRANSFER: 'NFT_TRANSFER',
+  NFT_MINT: 'NFT_MINT',
+  NFT_BURN: 'NFT_BURN',
+  TOKEN_CREATION: 'TOKEN_CREATION',
+  NFT_CREATION: 'NFT_CREATION',
   CALL_CONTRACT_METHOD: 'CALL_CONTRACT_METHOD',
   DEPLOY_CONTRACT: 'DEPLOY_CONTRACT',
   DEPLOY_ERC20: 'DEPLOY_ERC20',
@@ -13,6 +20,8 @@
   HATHOR_TOKEN_CREATION: 'HATHOR_TOKEN_CREATION',
   HATHOR_TOKEN_MINT: 'HATHOR_TOKEN_MINT',
   HATHOR_TOKEN_MELT: 'HATHOR_TOKEN_MELT',
+  HATHOR_NFT_MINT: 'HATHOR_NFT_MINT',
+  HATHOR_NFT_MELT: 'HATHOR_NFT_MELT',
   SOLANA_TOKEN_CREATION: 'SOLANA_TOKEN_CREATION',
   SOLANA_TOKEN_MINT: 'SOLANA_TOKEN_MINT',
   SOLANA_TOKEN_BURN: 'SOLANA_TOKEN_BURN',
@@ -447,11 +456,13 @@ class BitcoinTransferTransactionInput extends TransferTransactionInput {
    * @param {import('../../wallet/entity').Wallet=} args.wallet wallet to transfer from
    * @param {Array<Input>=} args.inputs inputs to transfer from
    * @param {Array<Output>} args.outputs outputs to transfer to
+   * @param {string=} args.data add OP_RETURN data
    */
-  constructor({ outputs, inputs, ...args }) {
+  constructor({ outputs, inputs, data, ...args }) {
     super(args)
     this.outputs = outputs
     this.inputs = inputs
+    this.data = data
   }
 }
 class HathorTransferTransactionInput extends TransferTransactionInput {

@@ -8,23 +8,25 @@ const InvalidException = require('../../errors/InvalidException')
 const { TransactionType } = require('../../features/transaction/entity')
 const { Protocol, TOKEN_TYPES } = require('../blockchain/constants')
 
-module.exports.validatePrivateKey = (privateKey) => {
+const validatePrivateKey = (privateKey) => {
   if (!privateKey || typeof privateKey !== 'string') {
     throw new GenericException('Invalid private key', 'InvalidTypeException')
   }
 }
 
-module.exports.validateCardanoPrivateKey = (privateKey) => {
-  if (!privateKey
-    || !privateKey.spendingPrivateKey
-    || !privateKey.stakingPrivateKey
-    || typeof privateKey.spendingPrivateKey !== 'string'
-    || typeof privateKey.stakingPrivateKey !== 'string') {
+const validateCardanoPrivateKey = (privateKey) => {
+  if (
+    !privateKey ||
+    !privateKey.spendingPrivateKey ||
+    !privateKey.stakingPrivateKey ||
+    typeof privateKey.spendingPrivateKey !== 'string' ||
+    typeof privateKey.stakingPrivateKey !== 'string'
+  ) {
     throw new GenericException('Invalid private key object', 'InvalidTypeException')
   }
 }
 
-module.exports.validateMnemonic = (mnemonic) => {
+const validateMnemonic = (mnemonic) => {
   if (mnemonic && typeof mnemonic !== 'string') {
     throw new InvalidTypeException('mnemonic', 'string')
   }
@@ -33,7 +35,7 @@ module.exports.validateMnemonic = (mnemonic) => {
   }
 }
 
-module.exports.validateEthereumTransferTransactionParams = ({
+const validateEthereumTransferTransactionParams = ({
   wallet,
   tokenSymbol,
   amount,
@@ -67,7 +69,8 @@ module.exports.validateEthereumTransferTransactionParams = ({
     throw new GenericException('Invalid contract address', 'InvalidTypeException')
   }
 }
-module.exports.validateCeloTransferTransactionParams = ({
+
+const validateCeloTransferTransactionParams = ({
   wallet,
   tokenSymbol,
   amount,
@@ -109,14 +112,7 @@ module.exports.validateCeloTransferTransactionParams = ({
     throw new GenericException('Invalid fee currency', 'InvalidTypeException')
   }
 }
-module.exports.validateSmartContractTransactionParams = ({
-  wallet,
-  fee,
-  testnet,
-  contractAddress,
-  feeCurrency,
-  protocol,
-}) => {
+const validateSmartContractTransactionParams = ({ wallet, fee, testnet, contractAddress, feeCurrency, protocol }) => {
   if (!wallet) {
     throw new GenericException('Invalid wallet', 'InvalidTypeException')
   }
@@ -135,11 +131,22 @@ module.exports.validateSmartContractTransactionParams = ({
   if (feeCurrency && typeof feeCurrency !== 'string') {
     throw new GenericException('Invalid fee currency', 'InvalidTypeException')
   }
-  if (![Protocol.BSC, Protocol.CELO, Protocol.ETHEREUM, Protocol.AVAXCCHAIN, Protocol.POLYGON].includes(protocol)) {
+  if (
+    ![
+      Protocol.BSC,
+      Protocol.CELO,
+      Protocol.ETHEREUM,
+      Protocol.STRATUS,
+      Protocol.BESU,
+      Protocol.AVAXCCHAIN,
+      Protocol.CHILIZ,
+      Protocol.POLYGON,
+    ].includes(protocol)
+  ) {
     throw new GenericException('Invalid protocol', 'InvalidTypeException')
   }
 }
-module.exports.validateSmartContractDeployTransactionParams = ({
+const validateSmartContractDeployTransactionParams = ({
   wallet,
   fee,
   testnet,
@@ -173,19 +180,22 @@ module.exports.validateSmartContractDeployTransactionParams = ({
   if (feeCurrency && typeof feeCurrency !== 'string') {
     throw new GenericException('Invalid fee currency', 'InvalidTypeException')
   }
-  if (![Protocol.BSC, Protocol.CELO, Protocol.ETHEREUM, Protocol.AVAXCCHAIN, Protocol.POLYGON].includes(protocol)) {
+  if (
+    ![
+      Protocol.BSC,
+      Protocol.CELO,
+      Protocol.ETHEREUM,
+      Protocol.STRATUS,
+      Protocol.BESU,
+      Protocol.AVAXCCHAIN,
+      Protocol.CHILIZ,
+      Protocol.POLYGON,
+    ].includes(protocol)
+  ) {
     throw new GenericException('Invalid protocol', 'InvalidTypeException')
   }
 }
-module.exports.validateTokenDeployTransactionParams = ({
-  wallet,
-  fee,
-  testnet,
-  tokenType,
-  params,
-  feeCurrency,
-  protocol,
-}) => {
+const validateTokenDeployTransactionParams = ({ wallet, fee, testnet, tokenType, params, feeCurrency, protocol }) => {
   if (!wallet) {
     throw new GenericException('Invalid wallet', 'InvalidTypeException')
   }
@@ -207,11 +217,22 @@ module.exports.validateTokenDeployTransactionParams = ({
   if (feeCurrency && typeof feeCurrency !== 'string') {
     throw new GenericException('Invalid fee currency', 'InvalidTypeException')
   }
-  if (![Protocol.BSC, Protocol.CELO, Protocol.AVAXCCHAIN, Protocol.ETHEREUM, Protocol.POLYGON].includes(protocol)) {
+  if (
+    ![
+      Protocol.BSC,
+      Protocol.CELO,
+      Protocol.AVAXCCHAIN,
+      Protocol.CHILIZ,
+      Protocol.ETHEREUM,
+      Protocol.STRATUS,
+      Protocol.BESU,
+      Protocol.POLYGON,
+    ].includes(protocol)
+  ) {
     throw new GenericException('Invalid protocol', 'InvalidTypeException')
   }
 }
-module.exports.validateSmartContractCallParams = ({ contractAddress, contractAbi, method, params, protocol }) => {
+const validateSmartContractCallParams = ({ contractAddress, contractAbi, method, params, protocol }) => {
   if (!contractAddress || typeof contractAddress !== 'string') {
     throw new GenericException('Invalid contract address', 'InvalidTypeException')
   }
@@ -224,12 +245,23 @@ module.exports.validateSmartContractCallParams = ({ contractAddress, contractAbi
   if (params && !Array.isArray(params)) {
     throw new GenericException('Invalid contract params', 'InvalidTypeException')
   }
-  if (![Protocol.BSC, Protocol.CELO, Protocol.AVAXCCHAIN, Protocol.ETHEREUM, Protocol.POLYGON].includes(protocol)) {
+  if (
+    ![
+      Protocol.BSC,
+      Protocol.CELO,
+      Protocol.AVAXCCHAIN,
+      Protocol.CHILIZ,
+      Protocol.ETHEREUM,
+      Protocol.STRATUS,
+      Protocol.BESU,
+      Protocol.POLYGON,
+    ].includes(protocol)
+  ) {
     throw new GenericException('Invalid protocol', 'InvalidTypeException')
   }
 }
 
-module.exports.validateBitcoinTransferTransactionParams = ({ wallet, inputs, outputs }) => {
+const validateBitcoinTransferTransactionParams = ({ wallet, inputs, outputs, data }) => {
   if (wallet && inputs) {
     throw new GenericException('Parameters wallet and inputs can not be sent at the same time', 'InvalidTypeException')
   }
@@ -248,8 +280,17 @@ module.exports.validateBitcoinTransferTransactionParams = ({ wallet, inputs, out
       'InvalidTypeException'
     )
   }
+  if (data) {
+    if (typeof data !== 'string') {
+      throw new InvalidTypeException('data', 'string')
+    } else {
+      if (data.length > 80) {
+        throw new InvalidException('The data parameter has to be at most 80 characters long')
+      }
+    }
+  }
 }
-module.exports.validateHathorTransferTransactionFromWallet = ({ wallet, outputs }) => {
+const validateHathorTransferTransactionFromWallet = ({ wallet, outputs }) => {
   if (!wallet) {
     throw new GenericException('Parameter wallet is null', 'InvalidTypeException')
   }
@@ -260,7 +301,7 @@ module.exports.validateHathorTransferTransactionFromWallet = ({ wallet, outputs 
     )
   }
 }
-module.exports.validateHathorTransferTransactionFromUTXO = ({ inputs, outputs }) => {
+const validateHathorTransferTransactionFromUTXO = ({ inputs, outputs }) => {
   if (!inputs) {
     throw new GenericException('Parameter inputs is null', 'InvalidTypeException')
   }
@@ -278,7 +319,7 @@ module.exports.validateHathorTransferTransactionFromUTXO = ({ inputs, outputs })
   }
 }
 
-module.exports.validateHathorTokenTransactionFromWallet = ({
+const validateHathorTokenTransactionFromWallet = ({
   wallet,
   tokenUid,
   tokenName,
@@ -298,7 +339,9 @@ module.exports.validateHathorTokenTransactionFromWallet = ({
     ![
       TransactionType.HATHOR_TOKEN_CREATION,
       TransactionType.HATHOR_TOKEN_MELT,
+      TransactionType.HATHOR_NFT_MELT,
       TransactionType.HATHOR_TOKEN_MINT,
+      TransactionType.HATHOR_NFT_MINT,
     ].includes(type)
   ) {
     throw new HathorException('Invalid type')
@@ -321,7 +364,7 @@ module.exports.validateHathorTokenTransactionFromWallet = ({
       throw new InvalidTypeException('tokenUid', 'string')
     }
   }
-  this.validatePositiveAmount(amount)
+  validatePositiveAmount(amount)
   if (address && typeof address !== 'string') {
     throw new InvalidTypeException('address', 'string')
   }
@@ -335,7 +378,7 @@ module.exports.validateHathorTokenTransactionFromWallet = ({
     throw new InvalidTypeException('meltAuthorityAddress', 'string')
   }
 }
-module.exports.validateHathorTokenTransactionFromUTXO = ({
+const validateHathorTokenTransactionFromUTXO = ({
   inputs,
   tokenUid,
   tokenName,
@@ -377,7 +420,7 @@ module.exports.validateHathorTokenTransactionFromUTXO = ({
       throw new InvalidTypeException('tokenUid', 'string')
     }
   }
-  this.validatePositiveAmount(amount)
+  validatePositiveAmount(amount)
   if (address && typeof address !== 'string') {
     throw new InvalidTypeException('address', 'string')
   }
@@ -392,7 +435,7 @@ module.exports.validateHathorTokenTransactionFromUTXO = ({
   }
 }
 
-module.exports.validateStellarTransferTransactionParams = ({
+const validateStellarTransferTransactionParams = ({
   wallet,
   assetSymbol,
   issuer,
@@ -437,7 +480,7 @@ module.exports.validateStellarTransferTransactionParams = ({
     throw new InvalidTypeException('timeout', 'number')
   }
 }
-module.exports.validateRippleTransferTransactionParams = ({
+const validateRippleTransferTransactionParams = ({
   wallet,
   assetSymbol,
   issuer,
@@ -474,7 +517,7 @@ module.exports.validateRippleTransferTransactionParams = ({
   }
 }
 
-module.exports.validateStellarTrustlineTransactionParams = ({
+const validateStellarTrustlineTransactionParams = ({
   wallet,
   assetSymbol,
   issuer,
@@ -512,15 +555,7 @@ module.exports.validateStellarTrustlineTransactionParams = ({
   }
 }
 
-module.exports.validateRippleTrustlineTransactionParams = ({
-  wallet,
-  assetSymbol,
-  issuer,
-  fee,
-  limit,
-  memo,
-  testnet,
-}) => {
+const validateRippleTrustlineTransactionParams = ({ wallet, assetSymbol, issuer, fee, limit, memo, testnet }) => {
   if (!wallet) {
     throw new GenericException('Invalid wallet', 'InvalidTypeException')
   }
@@ -545,7 +580,7 @@ module.exports.validateRippleTrustlineTransactionParams = ({
   }
 }
 
-module.exports.validateSignedTransaction = ({ signedTx, protocol, type }) => {
+const validateSignedTransaction = ({ signedTx, protocol, type }) => {
   if (!protocol || typeof protocol !== 'string') {
     throw new GenericException('Invalid protocol', 'InvalidTypeException')
   }
@@ -557,35 +592,35 @@ module.exports.validateSignedTransaction = ({ signedTx, protocol, type }) => {
   }
 }
 
-module.exports.validateEthAddress = (address) => {
+const validateEthAddress = (address) => {
   if (!Web3.utils.isAddress(address)) {
     throw new InvalidTypeException(address, 'string')
   }
 }
-module.exports.validateRippleAddress = (address) => {
+const validateRippleAddress = (address) => {
   if (!isValidAddress(address)) {
     throw new InvalidTypeException(address, 'string')
   }
 }
-module.exports.validateStellarAddress = (address) => {
+const validateStellarAddress = (address) => {
   if (!StrKey.isValidEd25519PublicKey(address)) {
     throw new InvalidTypeException(address, 'string')
   }
 }
-module.exports.validatePositiveAmount = (amount) => {
+const validatePositiveAmount = (amount) => {
   const value = new BigNumber(amount)
   if (value.isNaN() || value.lte(0)) {
     throw new GenericException('Invalid amount', 'InvalidTypeException')
   }
 }
-module.exports.validatePositive = (n) => {
+const validatePositive = (n) => {
   const value = new BigNumber(n)
   if (value.isNaN() || value.isNegative()) {
     throw new GenericException('Invalid value', 'InvalidTypeException')
   }
 }
 
-module.exports.validateWalletInfo = ({ address, protocol, tokenAddresses }) => {
+const validateWalletInfo = ({ address, protocol, tokenAddresses }) => {
   if (!address || typeof address !== 'string') {
     throw new InvalidTypeException('address', 'string')
   }
@@ -597,7 +632,7 @@ module.exports.validateWalletInfo = ({ address, protocol, tokenAddresses }) => {
   }
 }
 
-module.exports.validateWalletNft = ({ address, protocol, tokenAddresses }) => {
+const validateWalletNft = ({ address, protocol, tokenAddresses }) => {
   if (!address || typeof address !== 'string') {
     throw new InvalidTypeException('address', 'string')
   }
@@ -607,4 +642,53 @@ module.exports.validateWalletNft = ({ address, protocol, tokenAddresses }) => {
   if (tokenAddresses && !Array.isArray(tokenAddresses)) {
     throw new InvalidTypeException('tokenAddresses', 'array of strings')
   }
+}
+
+const validateTransferTransactionParams = (input) => {
+  const protocol = input.protocol
+
+  switch (protocol) {
+    case Protocol.ETHEREUM:
+    case Protocol.STRATUS:
+    case Protocol.BESU:
+    case Protocol.BSC:
+    case Protocol.POLYGON:
+    case Protocol.AVAXCCHAIN:
+    case Protocol.CHILIZ:
+      validateEthereumTransferTransactionParams(input)
+      break
+    case Protocol.CELO:
+      validateCeloTransferTransactionParams(input)
+      break
+  }
+}
+
+module.exports = {
+  validateSignedTransaction,
+  validateTransferTransactionParams,
+  validatePrivateKey,
+  validateBitcoinTransferTransactionParams,
+  validateCardanoPrivateKey,
+  validateCeloTransferTransactionParams,
+  validateEthAddress,
+  validateEthereumTransferTransactionParams,
+  validateHathorTokenTransactionFromUTXO,
+  validateHathorTokenTransactionFromWallet,
+  validateHathorTransferTransactionFromUTXO,
+  validateHathorTransferTransactionFromWallet,
+  validateStellarTransferTransactionParams,
+  validateRippleTransferTransactionParams,
+  validateMnemonic,
+  validatePositive,
+  validatePositiveAmount,
+  validateStellarAddress,
+  validateWalletNft,
+  validateWalletInfo,
+  validateRippleTrustlineTransactionParams,
+  validateRippleAddress,
+  validateStellarTrustlineTransactionParams,
+  validateTokenDeployTransactionParams,
+  validateSmartContractTransactionParams,
+  validateSmartContractDeployTransactionParams,
+  validateSmartContractCallParams,
 }

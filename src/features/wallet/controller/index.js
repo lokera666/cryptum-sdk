@@ -18,9 +18,11 @@ const {
   deriveStellarWalletFromDerivationPath,
   deriveRippleWalletFromDerivationPath,
   deriveEthereumWalletFromDerivationPath,
+  deriveStratusWalletFromDerivationPath,
   deriveBitcoinAddressFromXpub,
   deriveBscAddressFromXpub,
   deriveEthereumAddressFromXpub,
+  deriveStratusAddressFromXpub,
   deriveCeloAddressFromXpub,
   deriveHathorWalletFromDerivationPath,
   getHathorAddressFromPrivateKey,
@@ -31,9 +33,17 @@ const {
   deriveAvalancheAddressFromXpub,
   derivePolygonAddressFromXpub,
   deriveSolanaWalletFromDerivationPath,
+  getChilizAddressFromPrivateKey,
+  deriveChilizAddressFromXpub,
+  getStratusAddressFromPrivateKey,
 } = require('../../../services/wallet')
 const { Protocol } = require('../../../services/blockchain/constants')
-const { validateWalletInfo, validatePrivateKey, validateCardanoPrivateKey, validateWalletNft } = require('../../../services/validations')
+const {
+  validateWalletInfo,
+  validatePrivateKey,
+  validateCardanoPrivateKey,
+  validateWalletNft,
+} = require('../../../services/validations')
 const InvalidException = require('../../../errors/InvalidException')
 const { isTestnet } = require('../../../services/utils')
 
@@ -72,6 +82,10 @@ class Controller extends Interface {
         return await this.generateBscWallet({ mnemonic, derivation, testnet })
       case Protocol.ETHEREUM:
         return await this.generateEthereumWallet({ mnemonic, derivation, testnet })
+      case Protocol.STRATUS:
+        return await this.generateStratusWallet({ mnemonic, derivation, testnet })
+      case Protocol.BESU:
+        return await this.generateBesuWallet({ mnemonic, derivation, testnet })
       case Protocol.CELO:
         return await this.generateCeloWallet({ mnemonic, derivation, testnet })
       case Protocol.STELLAR:
@@ -84,6 +98,8 @@ class Controller extends Interface {
         return await this.generateCardanoWallet({ mnemonic, derivation, testnet })
       case Protocol.AVAXCCHAIN:
         return await this.generateAvalancheWallet({ mnemonic, derivation, testnet })
+      case Protocol.CHILIZ:
+        return await this.generateChilizWallet({ mnemonic, derivation, testnet })
       case Protocol.POLYGON:
         return await this.generatePolygonWallet({ mnemonic, derivation, testnet })
       case Protocol.SOLANA:
@@ -116,6 +132,8 @@ class Controller extends Interface {
         walletData.address = getBscAddressFromPrivateKey(privateKey)
         break
       case Protocol.ETHEREUM:
+      case Protocol.STRATUS:
+      case Protocol.BESU:
         walletData.address = getEthereumAddressFromPrivateKey(privateKey)
         break
       case Protocol.CELO:
@@ -135,6 +153,9 @@ class Controller extends Interface {
         break
       case Protocol.AVAXCCHAIN:
         walletData.address = getAvalancheAddressFromPrivateKey(privateKey)
+        break
+      case Protocol.CHILIZ:
+        walletData.address = getChilizAddressFromPrivateKey(privateKey)
         break
       case Protocol.POLYGON:
         walletData.address = getPolygonAddressFromPrivateKey(privateKey)
@@ -165,6 +186,8 @@ class Controller extends Interface {
         walletAddress = deriveBscAddressFromXpub(xpub, { address })
         break
       case Protocol.ETHEREUM:
+      case Protocol.STRATUS:
+      case Protocol.BESU:
         walletAddress = deriveEthereumAddressFromXpub(xpub, { address })
         break
       case Protocol.CELO:
@@ -178,6 +201,9 @@ class Controller extends Interface {
         break
       case Protocol.AVAXCCHAIN:
         walletAddress = deriveAvalancheAddressFromXpub(xpub, { address })
+        break
+      case Protocol.CHILIZ:
+        walletAddress = deriveChilizAddressFromXpub(xpub, { address })
         break
       case Protocol.POLYGON:
         walletAddress = derivePolygonAddressFromXpub(xpub, { address })
@@ -287,9 +313,26 @@ class Controller extends Interface {
     })
   }
 
+  async generateStratusWallet({ mnemonic, derivation, testnet }) {
+    const wallet = await this.generateEthereumWallet({ mnemonic, derivation, testnet })
+    wallet.protocol = Protocol.STRATUS
+    return wallet
+  }
+  async generateBesuWallet({ mnemonic, derivation, testnet }) {
+    const wallet = await this.generateEthereumWallet({ mnemonic, derivation, testnet })
+    wallet.protocol = Protocol.BESU
+    return wallet
+  }
+
   async generateAvalancheWallet({ mnemonic, derivation, testnet }) {
     const wallet = await this.generateEthereumWallet({ mnemonic, derivation, testnet })
     wallet.protocol = Protocol.AVAXCCHAIN
+    return wallet
+  }
+
+  async generateChilizWallet({ mnemonic, derivation, testnet }) {
+    const wallet = await this.generateEthereumWallet({ mnemonic, derivation, testnet })
+    wallet.protocol = Protocol.CHILIZ
     return wallet
   }
 
@@ -349,7 +392,6 @@ class Controller extends Interface {
       await makeRequest({ method: 'get', url: `/wallet/${address}/nft?${qs.join('&')}`, config: this.config })
     )
   }
-
 }
 
 module.exports.WalletController = Controller
